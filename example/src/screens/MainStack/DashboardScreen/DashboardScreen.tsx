@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer'
 import React, { useState } from 'react'
 import type { NativeStackScreenProps } from '@react-navigation/native-stack'
 import { FlatList } from 'react-native'
@@ -20,6 +21,9 @@ export function DashboardScreen({ navigation }: DashboardScreenProps) {
 
   const addFoundDevice = (device: Device) =>
     setFoundDevices(prevState => {
+      if (!isBmDevice(device)) {
+        return prevState
+      }
       if (!isFoundDeviceUpdateNecessary(prevState, device)) {
         return prevState
       }
@@ -55,17 +59,37 @@ export function DashboardScreen({ navigation }: DashboardScreenProps) {
     setIsConnecting(false)
   }
 
-  const deviceRender = (device: Device) => (
-    <BleDevice
-      onPress={pickedDevice => {
-        setIsConnecting(true)
-        BLEService.connectToDevice(pickedDevice.id).then(onConnectSuccess).catch(onConnectFail)
-      }}
-      key={device.id}
-      device={device}
-    />
-  )
+  const isBmDevice = (device: Device) => {
+    if (!device.manufacturerData) {
+      return false
+    }
+    // const manufacturerData = Buffer.from(device.manufacturerData || '', 'base64')
+    // return manufacturerData.length >= 3 && manufacturerData[1] === 0x33 && manufacturerData[2] === 0x01
+    const mfgId = Buffer.from(device.manufacturerData ?? '', 'base64').readInt16LE(0)
+    return mfgId === 307 // Manufacturer ID for Blue Maestro
+  }
 
+  const deviceRender = (device: Device) => {
+    if (!isBmDevice(device)) {
+      const hex = Buffer.from(device.manufacturerData || '', 'base64').toString('hex')
+      // return null
+      return (
+        <AppText>
+          Not a BM device {hex} - {device.id}
+        </AppText>
+      )
+    }
+    return (
+      <BleDevice
+        onPress={pickedDevice => {
+          setIsConnecting(true)
+          BLEService.connectToDevice(pickedDevice.id).then(onConnectSuccess).catch(onConnectFail)
+        }}
+        key={device.id}
+        device={device}
+      />
+    )
+  }
   return (
     <ScreenDefaultContainer>
       {isConnecting && (
@@ -80,21 +104,21 @@ export function DashboardScreen({ navigation }: DashboardScreenProps) {
           BLEService.initializeBLE().then(() => BLEService.scanDevices(addFoundDevice, null, true))
         }}
       />
-      <AppButton
+      {/* <AppButton
         label="Look for devices (legacy off)"
         onPress={() => {
           setFoundDevices([])
           BLEService.initializeBLE().then(() => BLEService.scanDevices(addFoundDevice, null, false))
         }}
-      />
-      <AppButton label="Ask for permissions" onPress={BLEService.requestBluetoothPermission} />
+      /> */}
+      {/* <AppButton label="Ask for permissions" onPress={BLEService.requestBluetoothPermission} />
       <AppButton label="Go to nRF test" onPress={() => navigation.navigate('DEVICE_NRF_TEST_SCREEN')} />
       <AppButton label="Call disconnect with wrong id" onPress={() => BLEService.isDeviceWithIdConnected('asd')} />
       <AppButton
         label="Connect/disconnect test"
         onPress={() => navigation.navigate('DEVICE_CONNECT_DISCONNECT_TEST_SCREEN')}
       />
-      <AppButton label="On disconnect test" onPress={() => navigation.navigate('DEVICE_ON_DISCONNECT_TEST_SCREEN')} />
+      <AppButton label="On disconnect test" onPress={() => navigation.navigate('DEVICE_ON_DISCONNECT_TEST_SCREEN')} /> */}
       <FlatList
         style={{ flex: 1 }}
         data={foundDevices}

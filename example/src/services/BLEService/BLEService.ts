@@ -10,7 +10,8 @@ import {
   type UUID,
   type Characteristic,
   type Base64,
-  type Subscription
+  type Subscription,
+  ScanMode
 } from 'react-native-ble-plx'
 import { PermissionsAndroid, Platform } from 'react-native'
 import Toast from 'react-native-toast-message'
@@ -93,7 +94,7 @@ class BLEServiceInstance {
   }
 
   scanDevices = async (onDeviceFound: (device: Device) => void, UUIDs: UUID[] | null = null, legacyScan?: boolean) => {
-    this.manager.startDeviceScan(UUIDs, { legacyScan }, (error, device) => {
+    this.manager.startDeviceScan(UUIDs, { legacyScan, scanMode: ScanMode.LowLatency }, (error, device) => {
       if (error) {
         this.onError(error)
         console.error(error.message)
